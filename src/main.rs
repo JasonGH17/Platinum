@@ -55,7 +55,10 @@ fn main() {
     let file_name = env::args().nth(1).unwrap();
     let mut compiler = Compiler::new(env::current_dir().unwrap().join(file_name.clone()).to_str().unwrap());
 
-    compiler.parser.parse();
+    let ast = compiler.parser.parse(None);
+    for node in ast.iter() {
+        println!("{node}");
+    }
 
     Compiler::write_file(&file_name.replace(".plat", ".wasm"), compiler.compile())
 }

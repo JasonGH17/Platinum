@@ -1,4 +1,4 @@
 func main(test: i32, hello: f64) i32 {
-    let out = test + 5;
+    let out: i32 = 5;
     return out;
 }
