@@ -1,0 +1,4 @@
+func main(test: i32) i32 {
+    let out = test + 5;
+    return out;
+}

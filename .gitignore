@@ -1,0 +1,4 @@
+/target
+
+*.ast.json
+*.wasm
