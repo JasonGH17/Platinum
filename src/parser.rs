@@ -31,13 +31,13 @@ pub struct FuncExpr {
 
 impl std::fmt::Display for FuncExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Function Definition:\nName: {}\nArgs:", self.name).expect("ERROR");
+        writeln!(f, "Function Definition:\n  - Name: {}\n  - Args:", self.name).expect("ERROR");
         for arg in self.args.iter() {
             writeln!(f, "\t- Function Argument: {} ({:?})", arg.name, arg.kind).expect("ERROR");
         }
-        writeln!(f, "Ret-Type: {:?}\nBody:", self.ret_kind).expect("ERROR");
+        writeln!(f, "  - Ret-Type: {:?}\n  - Body:", self.ret_kind).expect("ERROR");
         for node in self.body.as_ref().as_ref().unwrap().iter() {
-            writeln!(f, "{}", node).expect("ERROR");
+            write!(f, "\t{}", node).expect("ERROR");
         }
 
         Ok(())
@@ -69,10 +69,10 @@ pub enum Expr {
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expr::Unary(expr) => writeln!(f, "Unary Expr: {:?}{}", expr.operator.kind, expr.expr),
-            Expr::Binary(expr) => writeln!(f, "Binary Expr: {}{:?}{}", expr.left, expr.operator.kind, expr.right),
-            Expr::Literal(expr) => writeln!(f, "Literal Expr: {}", expr),
-            Expr::Group(expr) => writeln!(f, "Group Expr: {}", expr),
+            Expr::Unary(expr) => write!(f, "Unary Expr: {:?}{}", expr.operator.kind, expr.expr),
+            Expr::Binary(expr) => write!(f, "Binary Expr: {}{:?}{}", expr.left, expr.operator.kind, expr.right),
+            Expr::Literal(expr) => write!(f, "Literal Expr: {}", expr),
+            Expr::Group(expr) => write!(f, "Group Expr: {}", expr),
         }    
     }
 }
@@ -86,7 +86,7 @@ pub struct DefExpr {
 
 impl std::fmt::Display for DefExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Definition Expression:\n\tName: {}\n\tType: {:?}\n\tValue: {}", self.name, self.kind, self.value.as_ref().unwrap())
+        write!(f, "Definition Expression:\n\tName: {}\n\tType: {:?}\n\tValue: {}", self.name, self.kind, self.value.as_ref().unwrap())
     }
 }
 
@@ -102,8 +102,8 @@ impl std::fmt::Display for AST {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             AST::Func(expr) => writeln!(f, "AST Function Node:\n{}", expr),
-            AST::Def(expr) => writeln!(f, "AST Definition Node:\n{}", expr),
-            AST::Ret(expr) => writeln!(f, "AST Return Node:\n{}", expr.as_ref().unwrap()),
+            AST::Def(expr) => writeln!(f, "- AST Definition Node:\n\t{}\n", expr),
+            AST::Ret(expr) => writeln!(f, "- AST Return Node:\n\t{}\n", expr.as_ref().unwrap()),
         }
     }
 }

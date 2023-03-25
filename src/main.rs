@@ -57,7 +57,7 @@ fn main() {
 
     let ast = compiler.parser.parse(None);
     for node in ast.iter() {
-        println!("{node}");
+        print!("{node}");
     }
 
     Compiler::write_file(&file_name.replace(".plat", ".wasm"), compiler.compile())
