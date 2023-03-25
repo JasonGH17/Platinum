@@ -3,16 +3,20 @@
 use std::{fs, env};
 
 mod lexer;
+mod parser;
 
 struct Compiler {
     file: String,
-    lexer: lexer::Lexer,
+    parser: parser::Parser
 }
 
 impl Compiler {
     pub fn new(filename: &str) -> Self {
         let file = Compiler::read_file(filename);
-        Self { file: file.clone(), lexer: lexer::Lexer::new(file) }
+
+        let lexer = lexer::Lexer::new(file.clone());
+
+        Self { file, parser: parser::Parser::new(lexer) }
     }
 
     fn read_file(filename: &str) -> String {
@@ -51,12 +55,7 @@ fn main() {
     let file_name = env::args().nth(1).unwrap();
     let mut compiler = Compiler::new(env::current_dir().unwrap().join(file_name.clone()).to_str().unwrap());
 
-    let mut token = compiler.lexer.next();
-    while token.kind != lexer::PlatTokenKinds::EOF {
-        println!("{:?}", token);
-        token = compiler.lexer.next();
-    }
-    println!("{:?}", token);
+    compiler.parser.parse();
 
     Compiler::write_file(&file_name.replace(".plat", ".wasm"), compiler.compile())
 }
