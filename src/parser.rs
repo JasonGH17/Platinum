@@ -1,4 +1,4 @@
-use crate::lexer;
+use crate::lexer::{self, PlatTokenKinds};
 
 pub struct Parser {
     pub lexer: lexer::Lexer,
@@ -135,6 +135,7 @@ impl Parser {
         let mut args = vec![];
         let mut token;
 
+        assert_eq!(self.lexer.next().kind, PlatTokenKinds::OpenParen, "Invalid Function Signature! Missing Open Parenthesis \"(\"");
         while{
             token = self.lexer.next(); 
             token.kind != lexer::PlatTokenKinds::CloseParen
