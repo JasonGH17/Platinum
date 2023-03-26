@@ -6,7 +6,8 @@ pub struct Parser {
 }
 
 #[derive(Debug)]
-enum PlatTypes {
+#[derive(PartialEq, Clone, Copy)]
+pub enum PlatTypes {
     Void,
     I32,
     I64,
@@ -16,17 +17,17 @@ enum PlatTypes {
 
 // Function Structs
 #[derive(Debug)]
-struct FuncExprArg {
+pub struct FuncExprArg {
     name: String,
     kind: PlatTypes
 }
 
 #[derive(Debug)]
 pub struct FuncExpr {
-    name: String,
-    args: Vec<FuncExprArg>,
-    ret_kind: PlatTypes,
-    body: Box<Option<Vec<AST>>>
+    pub name: String,
+    pub args: Vec<FuncExprArg>,
+    pub ret_kind: PlatTypes,
+    pub body: Box<Option<Vec<AST>>>
 }
 
 impl std::fmt::Display for FuncExpr {
@@ -79,9 +80,9 @@ impl std::fmt::Display for Expr {
 
 #[derive(Debug)]
 pub struct DefExpr {
-    name: String,
-    kind: PlatTypes,
-    value: Option<Expr>
+    pub name: String,
+    pub kind: PlatTypes,
+    pub value: Option<Expr>
 }
 
 impl std::fmt::Display for DefExpr {
