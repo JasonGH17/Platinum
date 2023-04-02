@@ -1,8 +1,7 @@
 use crate::lexer::{self, PlatTokenKinds};
 
 pub struct Parser {
-    pub lexer: lexer::Lexer,
-    cursor: usize
+    pub lexer: lexer::Lexer
 }
 
 #[derive(Debug)]
@@ -19,7 +18,7 @@ pub enum PlatTypes {
 #[derive(Debug)]
 pub struct FuncExprArg {
     name: String,
-    kind: PlatTypes
+    pub kind: PlatTypes
 }
 
 #[derive(Debug)]
@@ -111,7 +110,7 @@ impl std::fmt::Display for AST {
 
 impl Parser {
     pub fn new(lexer: lexer::Lexer) -> Self {
-        Parser{lexer, cursor: 0 }
+        Parser{lexer}
     }
 
     fn expect_next_kind(&mut self, kind: lexer::PlatTokenKinds) -> lexer::PlatToken {

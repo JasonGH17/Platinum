@@ -4,9 +4,9 @@ use crate::lexer;
 use crate::parser;
 
 pub struct Compiler {
-    file: String,
     parser: parser::Parser,
-    program: Program
+    program: Program,
+    functions: Vec<Function>
 }
 
 struct Program {
@@ -17,6 +17,18 @@ struct Program {
     pub sec_expo: Vec<u8>,
     pub n_expos: u8,
     pub sec_code: Vec<u8>
+}
+
+struct Function {
+    _name: String,
+    vars: Vec<Variable>
+}
+
+struct Variable {
+    name: String,
+    index: u8,
+    _mutable: bool,
+    kind: parser::PlatTypes
 }
 
 impl Program {
@@ -55,9 +67,9 @@ impl Compiler {
     pub fn new(filename: &str) -> Self {
         let file = Compiler::read_file(filename);
 
-        let lexer = lexer::Lexer::new(file.clone());
+        let lexer = lexer::Lexer::new(file);
 
-        Self { file, parser: parser::Parser::new(lexer), program: Program::new() }
+        Self { parser: parser::Parser::new(lexer), program: Program::new(), functions: vec![] }
     }
 
     pub fn read_file(filename: &str) -> String {
@@ -73,11 +85,17 @@ impl Compiler {
     }
 
     fn compile_fn(&mut self, expr: &parser::FuncExpr) {
+        self.functions.push(Function{_name: expr.name.clone(), vars: vec![]});
+
         self.program.n_types += 1;
         self.program.sec_type.append(&mut vec![
             0x60,                                                                            // Function
             <usize as TryInto<u8>>::try_into(expr.args.len()).unwrap(),                      // Number of arguments
         ]);
+        for arg in expr.args.iter() {
+            self.program.sec_type.push(plat_type_to_byte(arg.kind));
+        }
+
         if expr.ret_kind == parser::PlatTypes::Void {
             self.program.sec_type.push(0x00);                                                // No returns
         } else {
@@ -90,16 +108,37 @@ impl Compiler {
         self.program.sec_code.push(0x00); // Function size placeholder
         let func_size_index = self.program.sec_code.len() - 1;
         let code_size = self.program.sec_code.len();
-        self.program.sec_code.push(0x00); // TODO: Add support for local declarations
+
+        self.program.sec_code.push(0x00); // Local declarations placeholder
+        let mut func_locals_index = self.program.sec_code.len() - 1;
         for node in expr.body.as_ref().as_ref().unwrap().iter() {
+            match node {
+                parser::AST::Func(_) => assert!(false, "Nested functions aren't supported..."),
+                parser::AST::Def(def) => {
+                    let current_fn = self.functions.last_mut().unwrap();
+                    current_fn.vars.push(Variable { name: def.name.clone(), index: (current_fn.vars.len() + expr.args.len()).try_into().unwrap(), _mutable: true, kind: def.kind });
+                },
+                _ => {}
+            }
             self.compile_node(node);
         }
         self.program.sec_code.push(0x0B); // End of function
+        
+        // Add local declarations
+        self.program.sec_code[func_locals_index] = <usize as TryInto<u8>>::try_into(self.functions.last().unwrap().vars.len()).unwrap();  // Number of local decls
+        func_locals_index += 1;
+        for node in self.functions.last().unwrap().vars.iter() {    
+            self.program.sec_code.insert({let temp = func_locals_index; func_locals_index += 1; temp}, 1);
+            self.program.sec_code.insert({let temp = func_locals_index; func_locals_index += 1; temp}, plat_type_to_byte(node.kind)); // Decl type
+        }
+
         self.program.sec_code[func_size_index] = <usize as TryInto<u8>>::try_into(self.program.sec_code.len() - code_size).unwrap();
     }
 
     fn compile_def(&mut self, expr: &parser::DefExpr) {
         let mut body: Vec<u8> = vec![];
+
+        let var_index: u8 = self.functions.last().unwrap().vars.iter().find(|var| var.name == expr.name).expect(&format!("The variable {} does not exist...", expr.name)).index.try_into().unwrap();
 
         match expr.kind {
             parser::PlatTypes::I32 => {
@@ -118,6 +157,7 @@ impl Compiler {
                                 body.push(byte);
                             }
                         };
+                        body.append(&mut vec![0x21, var_index]);
                     },
                     parser::Expr::Group(_) => todo!(),
                 };
@@ -138,6 +178,7 @@ impl Compiler {
                                 body.push(byte);
                             }
                         };
+                        body.append(&mut vec![0x21, var_index]);
                     },
                     parser::Expr::Group(_) => todo!(),
                 };
@@ -149,6 +190,7 @@ impl Compiler {
                     parser::Expr::Binary(_) => todo!(),
                     parser::Expr::Literal(expr) => {
                         for byte in expr.parse::<f32>().unwrap().to_le_bytes() { body.push(byte) };
+                        body.append(&mut vec![0x21, var_index]);
                     },
                     parser::Expr::Group(_) => todo!(),
                 };
@@ -160,6 +202,7 @@ impl Compiler {
                     parser::Expr::Binary(_) => todo!(),
                     parser::Expr::Literal(expr) => {
                         for byte in expr.parse::<f64>().unwrap().to_le_bytes() { body.push(byte) };
+                        body.append(&mut vec![0x21, var_index]);
                     },
                     parser::Expr::Group(_) => todo!(),
                 };
@@ -170,11 +213,23 @@ impl Compiler {
         self.program.sec_code.append(&mut body);
     }
 
+    fn compile_ret(&mut self, expr: &Option<parser::Expr>) {
+        match expr.as_ref().unwrap() {
+            parser::Expr::Literal(name) => {
+                let var_index: u8 = self.functions.last().unwrap().vars.iter().find(|var| &var.name == name).expect(&format!("The variable {} does not exist...", name)).index;
+                self.program.sec_code.append(&mut vec![0x20, var_index, 0x0F]); // local.get (var_index) return
+            },
+            parser::Expr::Unary(expr) => {println!("ret unary  {:?}", expr); todo!()},
+            parser::Expr::Binary(expr) => {println!("ret binary  {:?}", expr); todo!()},
+            parser::Expr::Group(expr) => {println!("ret group  {:?}", expr); todo!()},
+        };
+    }
+
     pub fn compile_node(&mut self, node: &parser::AST) {
         match node {
             parser::AST::Func(expr) => self.compile_fn(expr),
             parser::AST::Def(expr) => self.compile_def(expr),
-            parser::AST::Ret(_) => self.program.sec_code.push(0x0F),
+            parser::AST::Ret(expr) => self.compile_ret(expr),
         }
     }
 

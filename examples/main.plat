@@ -1,4 +1,4 @@
-func main() i32 {
+func main() f32 {
     let out: f32 = 45.8;
     let test: i32 = 7;
     return out;
