@@ -21,7 +21,8 @@ struct Program {
 
 struct Function {
     _name: String,
-    vars: Vec<Variable>
+    vars: Vec<Variable>,
+    ret_kind: parser::PlatTypes
 }
 
 struct Variable {
@@ -85,8 +86,6 @@ impl Compiler {
     }
 
     fn compile_fn(&mut self, expr: &parser::FuncExpr) {
-        self.functions.push(Function{_name: expr.name.clone(), vars: vec![]});
-
         self.program.n_types += 1;
         self.program.sec_type.append(&mut vec![
             0x60,                                                                            // Function
@@ -96,11 +95,14 @@ impl Compiler {
             self.program.sec_type.push(plat_type_to_byte(arg.kind));
         }
 
+        let mut ret_kind: parser::PlatTypes = parser::PlatTypes::Void;
         if expr.ret_kind == parser::PlatTypes::Void {
             self.program.sec_type.push(0x00);                                                // No returns
         } else {
             self.program.sec_type.append(&mut vec![0x01, plat_type_to_byte(expr.ret_kind)]); // Return type
+            ret_kind = expr.ret_kind;
         }
+        self.functions.push(Function{_name: expr.name.clone(), vars: vec![], ret_kind: ret_kind});
 
         self.program.sec_func.push(self.program.n_funcs);
         self.program.n_funcs += 1;
@@ -216,8 +218,10 @@ impl Compiler {
     fn compile_ret(&mut self, expr: &Option<parser::Expr>) {
         match expr.as_ref().unwrap() {
             parser::Expr::Literal(name) => {
-                let var_index: u8 = self.functions.last().unwrap().vars.iter().find(|var| &var.name == name).expect(&format!("The variable {} does not exist...", name)).index;
-                self.program.sec_code.append(&mut vec![0x20, var_index, 0x0F]); // local.get (var_index) return
+                let var: &Variable = self.functions.last().unwrap().vars.iter().find(|var| &var.name == name).expect(&format!("The variable {} does not exist...", name));
+                let ret_kind: parser::PlatTypes = self.functions.last().unwrap().ret_kind;
+                if  ret_kind != var.kind {assert!(false, "Invalid return type, expected {:?} got {:?}", ret_kind, var.kind)}
+                self.program.sec_code.append(&mut vec![0x20, var.index, 0x0F]); // local.get (var_index) return
             },
             parser::Expr::Unary(expr) => {println!("ret unary  {:?}", expr); todo!()},
             parser::Expr::Binary(expr) => {println!("ret binary  {:?}", expr); todo!()},
